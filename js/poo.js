@@ -9,9 +9,9 @@ class character{
 }
 
 const player = new character(10,4,0,4,'/images/characters/student/persoface.png');
-const shooter = new character(1,2,0,2,'/images/characters/.png'); //RAJOUTER IMAGE
-const chaser = new character (3,0,1,4,'/images/characters/.png'); //RAJOUTER IMAGE
-const boubou = new character(6,2,2,1,'/images/characters/.png'); //RAJOUTER IMAGE
+const shooter = new character(1,2,0,2,'/images/characters/seo.png'); 
+const chaser = new character (3,0,1,4,'/images/characters/namiko.png'); 
+const boubou = new character(6,2,2,1,'/images/characters/boubou.png'); 
 
 class items{
     constructor(pv, damage, speed, image){
