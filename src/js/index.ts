@@ -1,33 +1,20 @@
 import "phaser";
-import LoaderScene from "./LoaderScene";
-import GameScene from "./GameScene";
+import DungeonGen from "./dungeon_gen.js";
 
-const config: Phaser.Types.Core.GameConfig = {
+const config = {
   type: Phaser.AUTO,
-  width: 256,
-  height: 224,
-  zoom: 2,
-  input: {
-    keyboard: true,
-    gamepad: true,
-  },
-  render: {
-    pixelArt: true,
-    antialias: false,
-    antialiasGL: false,
-  },
+  width: 800,
+  height: 600,
+  backgroundColor: "#000",
+  parent: "game-container",
+  pixelArt: true,
+  scene: DungeonGen,
   physics: {
     default: "arcade",
     arcade: {
-      debug: false,
-      gravity: {
-        y: 500,
-      },
+      gravity: { y: 0 },
     },
   },
-  scene: [LoaderScene, GameScene],
 };
 
-window.addEventListener("load", () => {
-  new Phaser.Game(config);
-});
+const game = new Phaser.Game(config);
