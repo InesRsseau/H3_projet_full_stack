@@ -1,3 +1,4 @@
+//POO ; création des personnages 
 class character{
     constructor(pv, damage_shoot, damage_chase, speed, image){
         this.pv = pv;
@@ -12,6 +13,9 @@ const player = new character(10,4,0,4,'/images/characters/student/persoface.png'
 const shooter = new character(1,2,0,2,'/images/characters/seo.png'); 
 const chaser = new character (3,0,1,4,'/images/characters/namiko.png'); 
 const boubou = new character(6,2,2,1,'/images/characters/boubou.png'); 
+
+
+//POO ; création d'items
 
 class items{
     constructor(pv, damage, speed, image){
