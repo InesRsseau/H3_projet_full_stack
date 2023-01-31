@@ -99,6 +99,11 @@ export default class DungeonScene extends Phaser.Scene {
         ],
       ]);
 
+      for (let exit of piece.exits) {
+        let { x, y, dest_piece } = exit; // local position of exit and piece it exits to
+        piece.global_pos([x, y]); // [x, y] global pos of the exit
+      }
+
       if (
         Phaser.Geom.Rectangle.Contains(
           roomRect,
