@@ -23,7 +23,7 @@ var bullet;
 var game = new Phaser.Game(config);
 
 function preload() {
-  this.load.image("bullet", "assets/bullet.png");
+  this.load.image("bullet", "images/bullet.png");
 }
 
 function create() {
