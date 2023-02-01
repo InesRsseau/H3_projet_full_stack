@@ -1,6 +1,9 @@
 import Phaser from "phaser";
 import Dungeon from "dungeon-generator";
 import Player from "./player.js";
+import { db } from "./FireBaseConf.js";
+import { getDatabase, ref, child, get, set } from "firebase/database";
+import regeneratorRuntime from "regenerator-runtime";
 export default class DungeonScene extends Phaser.Scene {
   constructor() {
     super();
@@ -33,9 +36,33 @@ export default class DungeonScene extends Phaser.Scene {
       max_interconnect_length: 10,
       room_count: 10,
     });
+    this.layer = null;
+    this.enemySpawnPoints = [];
+    this.spawnedRooms = [];
+
+    this.bullet = null;
+
+    // let grid = [
+    //   [1, 1, 1, 0, 0],
+    //   [1, 0, 1, 0, 0],
+    //   [1, 1, 1, 1, 1],
+    //   [0, 0, 0, 0, 1],
+    //   [0, 0, 0, 1, 1],
+    // ];
+
+    // writeUserData("test", grid);
+    // function writeUserData(roomsId, layout) {
+    //   const db = getDatabase();
+    //   set(ref(db, "rooms_spawn/" + roomsId), {
+    //     layout: layout,
+    //   });
+    // }
   }
-  preload() {
+  async preload() {
     this.load.image("tiles", "../assets/tilesets/tiles.png");
+    this.load.image("boubou", "../assets/tilesets/boubou.png");
+    this.load.image("seo", "../assets/tilesets/seo.png");
+    this.load.image("namiko", "../assets/tilesets/namiko.png");
     this.load.spritesheet(
       "characters",
       "../assets/spritesheets/buch-characters-64px-extruded.png",
@@ -46,6 +73,33 @@ export default class DungeonScene extends Phaser.Scene {
         spacing: 2,
       }
     );
+    const dbRef = ref(getDatabase());
+    get(child(dbRef, `rooms_spawn/`))
+      .then((snapshot) => {
+        if (snapshot.exists()) {
+          // console.log(snapshot.val());
+          this.spawn = snapshot.val();
+          // console.log(this.spawn);
+
+          // console.log(this.spawn.test.layout);
+          for (let row = 0; row < this.spawn.test.layout.length; row++) {
+            for (let col = 0; col < this.spawn.test.layout[row].length; col++) {
+              if (this.spawn.test.layout[row][col] === 1) {
+                this.enemySpawnPoints.push({
+                  x: row * 50,
+                  y: col * 50,
+                });
+                // console.log(this.enemySpawnPoints);
+              }
+            }
+          }
+        } else {
+          console.log("No data available");
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   }
 
   create() {
@@ -58,18 +112,24 @@ export default class DungeonScene extends Phaser.Scene {
       height: this.dungeon.size[1],
     });
     const tileset = map.addTilesetImage("tiles", null, 48, 48, 1, 2); // 1px margin, 2px spacing
-    const layer = map.createBlankLayer("Layer 1", tileset);
+    this.layer = map.createBlankLayer("Layer 1", tileset);
 
     for (let y = 0; y < this.dungeon.size[1]; y++) {
       for (let x = 0; x < this.dungeon.size[0]; x++) {
         if (this.dungeon.walls.get([x, y])) {
           //   console.log(`Position (${x}, ${y}) is a wall.`);
-          layer.putTileAt(-1, x, y);
+          this.layer.putTileAt(-1, x, y);
           //set collision on wall tiles
-          layer.setCollision([-1]);
+          this.layer.setCollision([-1]);
         } else {
-          //   console.log(`Position (${x}, ${y}) is not a wall.`);
-          layer.putTileAt(6, x, y);
+          let randomNum = Math.random();
+          let tileId;
+          if (randomNum < 0.95) {
+            tileId = 6;
+          } else {
+            tileId = [7, 8, 9][Math.floor(Math.random() * 3)];
+          }
+          this.layer.putTileAt(tileId, x, y);
         }
       }
     }
@@ -80,7 +140,13 @@ export default class DungeonScene extends Phaser.Scene {
       this.dungeon.start_pos[1] * 48 + 24
     );
 
-    this.physics.add.collider(this.player.sprite, layer);
+    this.bullet = this.physics.add.group();
+
+    this.physics.add.collider(this.bullet, this.layer, (bullet) => {
+      bullet.destroy();
+    });
+
+    this.physics.add.collider(this.player.sprite, this.layer);
 
     const camera = this.cameras.main;
     camera.startFollow(this.player.sprite);
@@ -99,11 +165,6 @@ export default class DungeonScene extends Phaser.Scene {
         ],
       ]);
 
-      for (let exit of piece.exits) {
-        let { x, y, dest_piece } = exit; // local position of exit and piece it exits to
-        piece.global_pos([x, y]); // [x, y] global pos of the exit
-      }
-
       if (
         Phaser.Geom.Rectangle.Contains(
           roomRect,
@@ -111,14 +172,39 @@ export default class DungeonScene extends Phaser.Scene {
           this.player.sprite.y
         )
       ) {
-        // console.log(this.player.sprite.x);
-        // console.log(this.player.sprite.y);
-        // console.log("Room XBase: " + piece.position[0] * 50);
-        // console.log("Room YBase: " + piece.position[1] * 50);
-        // console.log("Room X: " + (piece.position[0] + piece.size[0]) * 50);
-        // console.log("Room Y: " + (piece.position[1] + piece.size[1]) * 50);
-        console.log("player is in room: " + piece.tag);
+        // console.log(
+        //   "Le joueur est dans la pièce : " + piece.tag,
+        //   "x : " + piece.position[0] * 50,
+        //   "y : " + piece.position[1] * 50
+        // );
+        // console.log(piece);
+        if (piece.tag !== "initial" && !this.spawnedRooms.includes(piece)) {
+          this.spawnEnemies(roomRect, piece.position[0], piece.position[1]);
+          console.log("Le joueur est dans une pièce non initiale");
+          for (let exit of piece.exits) {
+            this.layer.putTileAt(-1, exit[0][0], exit[0][1]);
+            this.layer.setCollision([-1]);
+          }
+          this.spawnedRooms.push(piece);
+        }
       }
     }
+  }
+  async spawnEnemies(roomRect, pieceX, pieceY) {
+    console.log(this.enemySpawnPoints);
+    console.log(roomRect);
+
+    let spawnLayout =
+      Math.round(Math.random() * this.enemySpawnPoints.length) - 1;
+
+    console.log("spawn enemy !!!!!");
+    let enemy = this.add.image(
+      this.enemySpawnPoints[spawnLayout].x + pieceX * 50,
+      this.enemySpawnPoints[spawnLayout].y + pieceY * 50,
+      //pick random enemy
+      ["seo", "namiko"][Math.floor(Math.random() * 2)]
+    );
+    enemy.setScale(0.3);
+    this.enemies.add(enemy);
   }
 }
